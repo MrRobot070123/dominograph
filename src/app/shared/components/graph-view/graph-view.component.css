@@ -1,0 +1,54 @@
+:host { display: block; }
+.graph { width: 100%; height: auto; display: block; background: #0b1524; border: 1px solid var(--line-soft); border-radius: var(--radius); touch-action: none; user-select: none; }
+
+/* ------------------------------------------------ aristas */
+.edge { cursor: pointer; }
+.edge .hit { fill: none; stroke: transparent; stroke-width: 14; }
+.edge .line { fill: none; stroke: #5d7ea3; stroke-width: 2.4; transition: stroke 0.25s, stroke-width 0.25s, opacity 0.25s; }
+.edge.loop .line { stroke: #8fa9c9; stroke-dasharray: 0; }
+.edge.parallel .line { stroke: var(--violet); }
+.edge:hover .line, .edge:focus-visible .line { stroke: #b9d5f5; stroke-width: 3.4; }
+.edge:focus { outline: none; }
+.edge .elabel { font: 600 10.5px var(--mono); fill: #a9bdd4; text-anchor: middle; paint-order: stroke; stroke: #0b1524; stroke-width: 4px; pointer-events: none; }
+
+.edge.dim .line { opacity: 0.22; }
+.edge.dim .elabel { opacity: 0.3; }
+.edge.path .line { stroke: var(--cyan); stroke-width: 4; }
+.edge.tree .line { stroke: var(--electric); stroke-width: 4; }
+.edge.euler .line { stroke: var(--success); stroke-width: 4.2; }
+.edge.active .line { stroke: var(--warn); stroke-width: 5.5; filter: drop-shadow(0 0 5px rgba(242, 184, 75, 0.8)); }
+.edge.bridge .line { stroke: var(--error); stroke-dasharray: 7 5; stroke-width: 3; }
+.edge.removed .line { opacity: 0.12; stroke-dasharray: 3 5; }
+.edge.removed .elabel { opacity: 0.2; }
+.edge.repeat .line { stroke: var(--error); stroke-width: 4.5; }
+.edge.sel .line { stroke: #fff; stroke-width: 4.5; }
+
+/* ------------------------------------------------ vértices */
+.vertex { cursor: pointer; }
+.vertex.drag { cursor: grab; }
+.vertex .halo { fill: none; stroke: transparent; stroke-width: 3; transition: stroke 0.2s; }
+.vertex .body { fill: #16304e; stroke: var(--electric); stroke-width: 2.5; transition: fill 0.25s, stroke 0.25s; }
+.vertex .vlabel { font: 800 17px var(--font-head); fill: var(--smoke); text-anchor: middle; pointer-events: none; }
+.vertex:hover .body, .vertex:focus-visible .body { fill: #1f4470; }
+.vertex:focus { outline: none; }
+.vertex:focus-visible .halo { stroke: var(--cyan); }
+
+.vertex.odd .halo { stroke: var(--odd); stroke-dasharray: 5 4; }
+.vertex.odd .body { stroke: var(--odd); }
+.vertex.isolated .body { fill: #121e2e; stroke: #3a5270; }
+.vertex.isolated .vlabel { fill: #6f839b; }
+.vertex.visited .body { fill: var(--electric); stroke: #9fcbff; }
+.vertex.current .body { fill: var(--warn); stroke: #ffe3a6; }
+.vertex.current .vlabel { fill: #1b1405; }
+.vertex.frontier .halo { stroke: var(--violet); stroke-dasharray: 0; }
+.vertex.unreach .body { fill: rgba(227, 93, 106, 0.18); stroke: var(--error); }
+.vertex.start .halo { stroke: var(--success); stroke-dasharray: 0; }
+.vertex.endv .halo { stroke: var(--error); stroke-dasharray: 0; }
+.vertex.inpath .body { fill: #155e74; stroke: var(--cyan); }
+.vertex.sel .halo { stroke: #fff; stroke-dasharray: 0; }
+
+.vertex.c0 .body { fill: #1b5fa8; } .vertex.c1 .body { fill: #157a63; } .vertex.c2 .body { fill: #8a4fb3; }
+.vertex.c3 .body { fill: #a35a22; } .vertex.c4 .body { fill: #a33a4a; } .vertex.c5 .body { fill: #5a6b1e; } .vertex.c6 .body { fill: #2f4a6b; }
+
+.badge rect { fill: #0b1524; stroke: var(--line); }
+.badge text { font: 600 10.5px var(--mono); fill: var(--cyan); }

@@ -1,0 +1,76 @@
+<div class="layout">
+  <section class="card stack">
+    <div class="card-title"><h2>Búsqueda con retroceso</h2><span class="small muted">Conjunto: fichas del grafo activo ({{ g().size }})</span></div>
+    <app-graph-view [graph]="g()" [positions]="lab.layout()" [edgeClass]="edgeClass()" [vertexClass]="vertexClass()"
+      (vertexClick)="start.set($event)" (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" ariaLabel="Grafo del backtracking" />
+    <div class="partial" aria-label="Cadena actual">
+      @for (c of shownChain(); track $index) { <app-domino-tile [a]="c.from" [b]="c.to" [size]="18" [state]="selected() !== null ? 'euler' : null" /> }
+      @empty { <span class="muted small">La cadena parcial aparecerá aquí.</span> }
+    </div>
+    <app-step-controls [player]="player" />
+    <div class="note msg" [class]="'note msg ' + (step()?.kind ?? '')" aria-live="polite">
+      @if (selected() !== null) { Mostrando la solución {{ selected()! + 1 }}. }
+      @else if (step(); as s) { <b>Profundidad {{ s.depth }}.</b> {{ s.message }} }
+      @else { El algoritmo coloca una ficha compatible con el extremo libre, avanza y, si llega a un callejón sin salida, retira la última ficha (retrocede) y prueba la siguiente opción. }
+    </div>
+  </section>
+
+  <div class="stack" style="gap:16px">
+    <section class="card stack">
+      <h2>Parámetros</h2>
+      <div class="opts">
+        <div class="field">
+          <label for="bt-start">Vértice inicial</label>
+          <select id="bt-start" [value]="start()" (change)="start.set(+$any($event.target).value)">
+            @for (v of g().vertices; track v) { <option [value]="v">{{ v }}</option> }
+          </select>
+        </div>
+        <div class="field">
+          <label for="bt-mode">Objetivo</label>
+          <select id="bt-mode" [value]="mode()" (change)="mode.set($any($event.target).value)">
+            <option value="length">Cadena de longitud dada (subconjunto)</option>
+            <option value="all">Usar todas las fichas (euleriana)</option>
+          </select>
+        </div>
+        @if (mode() === 'length') {
+          <div class="field">
+            <label for="bt-len">Longitud (fichas)</label>
+            <input id="bt-len" type="number" min="1" [max]="g().size" [value]="length()" (input)="length.set(+$any($event.target).value || 1)" />
+          </div>
+        }
+        <div class="field">
+          <label for="bt-max">Máx. soluciones a mostrar</label>
+          <input id="bt-max" type="number" min="1" max="200" [value]="maxSolutions()" (input)="maxSolutions.set(+$any($event.target).value || 1)" />
+        </div>
+      </div>
+      <button class="btn primary" (click)="run()" [disabled]="g().size === 0">Buscar secuencias</button>
+      <p class="small muted" style="margin:0">
+        @if (mode() === 'all') { Busca secuencias que usan TODAS las fichas una vez (recorridos eulerianos). Si las condiciones de Euler fallan, el algoritmo agotará las opciones sin encontrar ninguna. }
+        @else { Busca cadenas válidas de dominó con solo {{ length() }} fichas: no tienen por qué usar todo el conjunto. Esto es lo que ocurre en una partida real. }
+      </p>
+    </section>
+
+    @if (result(); as r) {
+      <section class="card stack">
+        <div class="stats">
+          <div class="stat"><b>{{ r.solutions.length }}</b><span>soluciones</span></div>
+          <div class="stat"><b>{{ r.explored }}</b><span>nodos explorados</span></div>
+          <div class="stat"><b>{{ r.backtracks }}</b><span>retrocesos</span></div>
+          <div class="stat"><b>{{ r.target }}</b><span>fichas meta</span></div>
+        </div>
+        @if (r.truncated) { <div class="note warn small">Se alcanzó el límite de exploración: el espacio de búsqueda es exponencial.</div> }
+        @if (r.steps.length >= 600) { <div class="small muted">Se registran los primeros 600 pasos para la animación.</div> }
+        @if (r.solutions.length) {
+          <h3>Soluciones encontradas</h3>
+          <ul class="sols">
+            @for (s of r.solutions; track $index; let i = $index) {
+              <li><button [class.on]="selected() === i" (click)="selected.set(selected() === i ? null : i)">{{ i + 1 }}. {{ chainText(s) }}</button></li>
+            }
+          </ul>
+        } @else {
+          <div class="note bad">No existe ninguna secuencia {{ r.target === g().size ? 'que use todas las fichas' : 'de ' + r.target + ' fichas' }} empezando en {{ start() }}.</div>
+        }
+      </section>
+    }
+  </div>
+</div>

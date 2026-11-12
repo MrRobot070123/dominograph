@@ -1,0 +1,41 @@
+:host { display: block; min-height: 100vh; }
+.skip { position: absolute; left: -999px; top: 8px; z-index: 100; background: var(--electric); color: #fff; padding: 8px 12px; border-radius: 8px; }
+.skip:focus { left: 8px; }
+
+.sidebar {
+  position: fixed; inset: 0 auto 0 0; width: 248px; z-index: 30;
+  display: flex; flex-direction: column; gap: 22px; padding: 22px 16px;
+  background: linear-gradient(180deg, #0f1c2e, #0b1524); border-right: 1px solid var(--line-soft);
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-name { font: 800 1.08rem var(--font-head); letter-spacing: 0.04em; color: var(--smoke); }
+.tagline { font-size: 0.72rem; color: var(--muted); }
+
+nav { display: flex; flex-direction: column; gap: 4px; }
+nav a {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;
+  color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.94rem;
+  border: 1px solid transparent; transition: background 0.15s, color 0.15s;
+}
+nav a:hover { background: rgba(49, 140, 231, 0.08); color: var(--text); }
+nav a.active { background: rgba(49, 140, 231, 0.16); color: #fff; border-color: rgba(49, 140, 231, 0.35); }
+nav a.active app-icon { color: var(--cyan); }
+
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+.model { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 12px; background: rgba(23, 52, 81, 0.5); border: 1px solid var(--line-soft); font-size: 0.78rem; color: var(--muted); }
+.model .mono { color: var(--cyan); font-size: 0.9rem; }
+.authors { font-size: 0.74rem; color: var(--muted-2); padding: 0 6px; }
+
+.content { margin-left: 248px; min-height: 100vh; outline: none; }
+.mobile-bar { display: none; }
+.scrim { display: none; }
+
+.error-toast { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; justify-content: space-between; background: #3a1820; border-bottom: 1px solid var(--error); padding: 8px 16px; font-size: 0.9rem; }
+
+@media (max-width: 960px) {
+  .mobile-bar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 25; padding: 8px 12px; background: rgba(13, 23, 38, 0.95); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line-soft); }
+  .sidebar { transform: translateX(-100%); transition: transform 0.22s ease; box-shadow: var(--shadow); }
+  .sidebar.open { transform: none; }
+  .scrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 29; }
+  .content { margin-left: 0; }
+}

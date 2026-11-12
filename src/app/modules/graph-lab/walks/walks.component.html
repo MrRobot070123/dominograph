@@ -1,0 +1,55 @@
+<div class="layout">
+  <section class="card stack">
+    <div class="card-title"><h2>Construye una secuencia</h2><span class="small muted">Haz clic en los vértices en orden</span></div>
+    <app-graph-view [graph]="lab.graph()" [positions]="lab.layout()" [vertexClass]="vertexClass()" [edgeClass]="edgeClass()" [vertexBadge]="badges()"
+      [draggable]="false" (vertexClick)="add($event)" ariaLabel="Seleccione vértices para construir un camino" />
+    <div class="legend">
+      <span><i style="background:var(--success)"></i>Inicio</span>
+      <span><i style="background:var(--warn)"></i>Último vértice</span>
+      <span><i style="background:var(--cyan);border-radius:2px;height:4px"></i>Arista recorrida</span>
+      <span><i style="background:var(--error);border-radius:2px;height:4px"></i>Arista repetida</span>
+    </div>
+  </section>
+
+  <div class="stack" style="gap:16px">
+    <section class="card stack">
+      <h3>Secuencia</h3>
+      @if (fromGame()) { <div class="note ok small">Esta es la cadena de tu última partida, leída como secuencia de vértices del multigrafo de las fichas jugadas.</div> }
+      <div class="seq" aria-live="polite">
+        @for (v of seq(); track $index; let last = $last) { <span class="v">{{ v }}</span> @if (!last) { <span class="arrow">→</span> } }
+        @empty { <span class="muted small">Aún no hay vértices seleccionados.</span> }
+      </div>
+      <div class="row">
+        <button class="btn sm" (click)="undo()" [disabled]="!seq().length">Deshacer</button>
+        <button class="btn sm" (click)="close()" [disabled]="seq().length < 2">Cerrar (volver al inicio)</button>
+        <button class="btn sm danger" (click)="clear()" [disabled]="!seq().length">Limpiar</button>
+      </div>
+      <div class="row small"><span class="muted">Ejemplos:</span>
+        <button class="btn sm ghost" (click)="example('simple')">Camino simple</button>
+        <button class="btn sm ghost" (click)="example('ciclo')">Ciclo</button>
+        <button class="btn sm ghost" (click)="example('rep')">Con repetición</button>
+      </div>
+    </section>
+
+    @if (analysis(); as a) {
+      <section class="card stack" aria-live="polite">
+        <div class="row"><span class="verdict">{{ a.title }}</span>
+          @if (a.valid) { <span class="chip ok">Secuencia válida</span> } @else { <span class="chip bad">No válida</span> }
+          @if (a.eulerian) { <span class="chip ok">Euleriano</span> }
+        </div>
+        <ul class="small" style="margin:0;padding-left:18px">@for (l of a.explanation; track $index) { <li>{{ l }}</li> }</ul>
+      </section>
+    }
+
+    <section class="card">
+      <h3>Diferencias entre conceptos</h3>
+      <table class="table defs small">
+        <tbody>
+          @for (d of defs; track d.type) {
+            <tr [class.cur]="analysis()?.type === d.type || (d.type === 'euler' && analysis()?.eulerian)"><td>{{ d.name }}</td><td>{{ d.def }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>

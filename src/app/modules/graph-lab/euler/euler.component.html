@@ -1,0 +1,87 @@
+<div class="layout">
+  <section class="card stack">
+    <div class="card-title"><h2>Recorrido euleriano</h2>
+      <div class="tabs-inline" role="tablist">
+        <button class="btn sm" role="tab" [class.active]="algo() === 'hierholzer'" [attr.aria-selected]="algo() === 'hierholzer'" (click)="setAlgo('hierholzer')">Hierholzer</button>
+        <button class="btn sm" role="tab" [class.active]="algo() === 'fleury'" [attr.aria-selected]="algo() === 'fleury'" (click)="setAlgo('fleury')">Fleury (didáctico)</button>
+      </div>
+    </div>
+    <app-graph-view [graph]="g()" [positions]="lab.layout()" [vertexClass]="vertexClass()" [edgeClass]="edgeClass()" [vertexBadge]="badges()"
+      [showEdgeLabels]="g().size <= 28" (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" ariaLabel="Grafo para el análisis euleriano" />
+    <div class="legend">
+      <span><i style="border:2px dashed var(--odd)"></i>Grado impar</span>
+      <span><i style="background:var(--success);border-radius:2px;height:4px"></i>Arista recorrida</span>
+      <span><i style="background:var(--warn);border-radius:2px;height:4px"></i>Arista actual</span>
+      @if (algo() === 'fleury') { <span><i style="background:var(--error);border-radius:2px;height:4px"></i>Puente (se evita)</span> }
+    </div>
+    <div class="row">
+      <label for="st">Inicio:</label>
+      <select id="st" [value]="start() ?? ''" (change)="start.set($any($event.target).value === '' ? null : +$any($event.target).value)" [disabled]="!possible()">
+        <option value="">Automático{{ analysis().start !== null ? ' (' + analysis().start + ')' : '' }}</option>
+        @for (v of validStarts(); track v) { <option [value]="v">Vértice {{ v }}</option> }
+      </select>
+      <button class="btn primary" (click)="run()" [disabled]="!possible()">Ejecutar {{ algo() === 'hierholzer' ? 'Hierholzer' : 'Fleury' }}</button>
+    </div>
+    <app-step-controls [player]="player" />
+    <div class="note msg" aria-live="polite">
+      @if (stepMessage(); as m) { {{ m }} }
+      @else if (!possible()) { No se puede ejecutar: el grafo no cumple las condiciones de Euler (ver análisis). }
+      @else if (algo() === 'hierholzer') { Hierholzer avanza por fichas libres hasta quedar atascado; al retroceder fija vértices en el recorrido y así empalma los subciclos. }
+      @else { Fleury elige en cada paso una ficha que no sea puente, salvo que sea la única opción. Es más lento (O(|E|²)) pero fácil de seguir. }
+    </div>
+  </section>
+
+  <div class="stack" style="gap:16px">
+    <section class="card">
+      <h2>Análisis de las condiciones</h2>
+      <ol class="checks">
+        <li [class.ok]="true"><b>Vértices de grado impar:</b> {{ analysis().oddVertices.length ? analysis().oddVertices.join(', ') + ' (' + analysis().oddVertices.length + ')' : 'ninguno' }}</li>
+        <li [class.ok]="analysis().edgesConnected" [class.bad]="!analysis().edgesConnected && g().size > 0"><b>Aristas en una sola componente:</b> {{ g().size === 0 ? 'no hay aristas' : analysis().edgesConnected ? 'sí' : 'no (' + analysis().edgeComponents + ' componentes con aristas)' }}</li>
+        <li [class.ok]="analysis().kind === 'circuit'" [class.bad]="analysis().kind !== 'circuit'"><b>¿Circuito euleriano?</b> {{ analysis().kind === 'circuit' ? 'Sí' : 'No' }}</li>
+        <li [class.ok]="analysis().kind === 'path'" [class.bad]="analysis().kind !== 'path' && analysis().kind !== 'circuit'"><b>¿Camino euleriano abierto?</b> {{ analysis().kind === 'path' ? 'Sí, de ' + analysis().start + ' a ' + analysis().end : analysis().kind === 'circuit' ? 'No hace falta: hay circuito' : 'No' }}</li>
+      </ol>
+      <div class="note" [class.ok]="possible()" [class.bad]="!possible()">
+        <b>Explicación</b>
+        <ul>@for (r of analysis().reasons; track $index) { <li>{{ r }}</li> }</ul>
+      </div>
+    </section>
+
+    @if (hState(); as h) {
+      <section class="card small">
+        <div><b>Pila:</b> <span class="mono">{{ h.stack.join(' → ') || '∅' }}</span></div>
+        <div><b>Recorrido fijado (orden inverso):</b> <span class="mono">{{ h.fixed.join(' ← ') || '∅' }}</span></div>
+      </section>
+    }
+    @if (fState(); as f) {
+      <section class="card small">
+        <b>Opciones desde {{ f.at }}:</b>
+        <div class="row" style="margin-top:6px">
+          @for (c of f.candidates; track c.edgeId) {
+            <span class="chip" [class.bad]="c.isBridge" [class.ok]="c.edgeId === f.chosen">{{ c.edgeId }} → {{ c.to }}{{ c.isBridge ? ' (puente)' : '' }}</span>
+          }
+        </div>
+      </section>
+    }
+
+    @if (trail() && finished()) {
+      <section class="card">
+        <div class="card-title"><h2>Resultado</h2>
+          @if (validation()?.valid) { <span class="chip ok">Validado</span> } @else { <span class="chip bad">Inválido</span> }
+        </div>
+        <p class="small">{{ trail()!.closed ? 'Circuito' : 'Camino' }} euleriano con {{ trail()!.edges.length }} fichas:</p>
+        <div class="mono seq">{{ trail()!.vertices.join(' → ') }}</div>
+        <div class="chain" aria-label="Fichas en orden">
+          @for (c of chain(); track c.id) { <app-domino-tile [a]="c.from" [b]="c.to" [size]="20" [state]="chainState($index)" /> }
+        </div>
+        @if (validation()?.valid) {
+          <ul class="valid small">
+            <li>✓ Usa las {{ g().size }} aristas del grafo</li>
+            <li>✓ Ninguna ficha se repite</li>
+            <li>✓ Fichas consecutivas comparten valor</li>
+            <li>✓ {{ trail()!.closed ? 'Empieza y termina en ' + trail()!.vertices[0] : 'Empieza en ' + trail()!.vertices[0] + ' y termina en ' + trail()!.vertices[trail()!.vertices.length - 1] }}</li>
+          </ul>
+        } @else { <div class="note bad">@for (e of validation()?.errors ?? []; track $index) { <div>{{ e }}</div> }</div> }
+      </section>
+    }
+  </div>
+</div>

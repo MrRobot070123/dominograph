@@ -1,0 +1,68 @@
+<div class="layout">
+  <section class="card stack">
+    <div class="card-title">
+      <h2>Recorrido sobre el grafo</h2>
+      <label class="row small"><input type="checkbox" [checked]="showComponents()" (change)="showComponents.set(!showComponents())" /> Colorear componentes</label>
+    </div>
+    <app-graph-view [graph]="lab.graph()" [positions]="lab.layout()" [vertexClass]="vertexClass()" [edgeClass]="edgeClass()" [vertexBadge]="badges()"
+      (vertexClick)="pickStart($event)" (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" ariaLabel="Grafo para BFS y DFS" />
+    <div class="legend">
+      <span><i style="background:var(--success)"></i>Inicio</span>
+      <span><i style="background:var(--warn)"></i>Vértice actual</span>
+      <span><i style="background:var(--electric)"></i>Visitado</span>
+      <span><i style="border:2px solid var(--violet)"></i>En cola / pila</span>
+      <span><i style="background:rgba(227,93,106,.4)"></i>No alcanzable</span>
+      <span><i style="background:var(--electric);border-radius:2px;height:4px"></i>Arista del árbol</span>
+    </div>
+  </section>
+
+  <div class="stack" style="gap:16px">
+    <section class="card stack">
+      <h2>1. Elige el vértice inicial</h2>
+      <div class="row">
+        <select [value]="start()" (change)="pickStart(+$any($event.target).value)" aria-label="Vértice inicial">
+          @for (v of lab.graph().vertices; track v) { <option [value]="v">Vértice {{ v }}</option> }
+        </select>
+        <span class="small muted">o haz clic sobre un vértice del grafo.</span>
+      </div>
+      <h2 style="margin-top:6px">2. Ejecuta un algoritmo</h2>
+      <div class="row">
+        <button class="btn primary" (click)="run('BFS')">Ejecutar BFS (anchura)</button>
+        <button class="btn primary" (click)="run('DFS')">Ejecutar DFS (profundidad)</button>
+      </div>
+      <app-step-controls [player]="player" />
+      <div class="msg note" aria-live="polite">
+        @if (step(); as s) { {{ s.message }} } @else { BFS explora por niveles usando una cola (FIFO); DFS avanza lo más lejos posible usando una pila (LIFO) y retrocede al quedar sin salida. }
+      </div>
+    </section>
+
+    @if (result(); as r) {
+      <section class="card stack">
+        <h3>{{ r.algorithm === 'BFS' ? 'Cola (frente → final)' : 'Pila (fondo → tope)' }}</h3>
+        <div class="seq">
+          @for (v of step()?.frontier ?? []; track $index) { <span class="pill q">{{ v }}</span> } @empty { <span class="muted small">vacía</span> }
+        </div>
+        <h3>Orden de visita</h3>
+        <div class="seq">@for (v of orderSoFar(); track v) { <span class="pill">{{ v }}</span> }</div>
+        @if (done()) {
+          <h3>Vértices no alcanzables desde {{ r.start }}</h3>
+          <div class="seq">@for (v of r.unreachable; track v) { <span class="pill u">{{ v }}</span> } @empty { <span class="chip ok">Ninguno: todos son alcanzables</span> }</div>
+          @if (r.algorithm === 'BFS') {
+            <p class="small muted">Distancias (nº de fichas) desde {{ r.start }}: @for (v of r.order; track v) { <span class="mono">d({{ v }})={{ r.distance.get(v) }} </span> }</p>
+          }
+        }
+      </section>
+    }
+
+    <section class="card">
+      <h3>Componentes conexas</h3>
+      <div class="comp">
+        @for (c of components(); track $index; let i = $index) { <span [class]="'c' + (i % 7)">{{ '{' + c.join(', ') + '}' }}</span> }
+      </div>
+      <p class="small muted" style="margin-top:10px">
+        {{ components().length === 1 ? 'El grafo es conexo.' : 'El grafo tiene ' + components().length + ' componentes.' }}
+        Componentes con aristas: {{ withEdges() }}. Para Euler solo importa que las aristas estén en una sola componente: los vértices aislados no cuentan.
+      </p>
+    </section>
+  </div>
+</div>

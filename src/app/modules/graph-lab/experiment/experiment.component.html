@@ -1,0 +1,72 @@
+<ol class="stepper" aria-label="Pasos del experimento">
+  @for (t of titles; track $index; let i = $index) {
+    <li><button [class.active]="step() === i" [class.done]="step() > i" (click)="go(i)" [attr.aria-current]="step() === i ? 'step' : null"><span>{{ i + 1 }}</span>{{ t }}</button></li>
+  }
+</ol>
+
+<div class="layout">
+  <section class="card stack">
+    <app-graph-view [graph]="graph" [positions]="positions" [vertexClass]="vertexClass()" [edgeClass]="edgeClass()" [vertexBadge]="badges()"
+      [showEdgeLabels]="step() === 2 || step() === 6" [draggable]="false" ariaLabel="Multigrafo del dominó completo" />
+    @if (step() === 6) {
+      <app-step-controls [player]="player" />
+      <div class="small muted">Fichas recorridas: <b class="mono">{{ walked() }} / 28</b></div>
+    }
+  </section>
+
+  <section class="card explain" aria-live="polite">
+    <div class="eyebrow">Paso {{ step() + 1 }} de {{ titles.length }}</div>
+    <h2>{{ titles[step()] }}</h2>
+    @switch (step()) {
+      @case (0) {
+        <p>Generamos todas las fichas con 0 ≤ a ≤ b ≤ 6. El motor produce <b>{{ tiles.length }}</b> fichas, que coincide con la fórmula:</p>
+        <div class="formula">(n + 1)(n + 2) / 2 = 7 · 8 / 2 = {{ expected }}</div>
+        <div class="tiles">@for (t of tiles; track t.id) { <app-domino-tile [a]="t.a" [b]="t.b" [size]="17" /> }</div>
+      }
+      @case (1) {
+        <p>Cada valor posible de una mitad de ficha es un vértice: <span class="formula">V = {{ '{' }}{{ graph.vertices.join(', ') }}{{ '}' }}</span></p>
+        <p>|V| = <b>{{ graph.order }}</b>. En el grafo, los vértices son los círculos numerados.</p>
+      }
+      @case (2) {
+        <p>Cada ficha es una arista entre sus dos valores. Hay <b>{{ graph.size }}</b> aristas:</p>
+        <ul>
+          <li><b>{{ doubles.length }}</b> dobles (0-0 … 6-6) que son <b>bucles</b> (resaltados en amarillo).</li>
+          <li><b>{{ nonDoubles.length }}</b> fichas con valores distintos: una por cada par de vértices, como en el grafo completo K7.</li>
+        </ul>
+        <p class="small muted">No hay aristas paralelas en el juego estándar, pero el modelo de multigrafo es necesario para los bucles.</p>
+      }
+      @case (3) {
+        <p>Cada vértice está unido a los otros 6 por una ficha y además tiene un doble (bucle), que cuenta 2:</p>
+        <div class="formula">grado(v) = 6 + 2·1 = 8</div>
+        <table class="table" style="margin-top:10px"><thead><tr><th>v</th>@for (r of table; track r.vertex) { <th class="num">{{ r.vertex }}</th> }</tr></thead>
+          <tbody><tr><td>grado</td>@for (r of table; track r.vertex) { <td class="num">{{ r.degree }}</td> }</tr></tbody></table>
+        <p style="margin-top:10px">Apretón de manos: Σ grado = {{ hs.degreeSum }} = 2 · {{ hs.edgeCount }} <span class="chip ok">verificado</span></p>
+      }
+      @case (4) {
+        <p>Un BFS desde el vértice 0 visita: <span class="mono">{{ bfsOrder.join(' → ') }}</span>.</p>
+        <p>Alcanza los {{ bfsOrder.length }} vértices, así que el multigrafo es <b>{{ connected ? 'conexo' : 'no conexo' }}</b>. Las aristas azules forman el árbol BFS: cualquier par de valores distintos comparte una ficha.</p>
+      }
+      @case (5) {
+        <ul class="checks">
+          <li>Vértices de grado impar: <b>{{ euler.oddVertices.length }}</b> (todos tienen grado 8, que es par).</li>
+          <li>Todas las aristas están en una sola componente conexa.</li>
+        </ul>
+        <div class="note ok">Por el teorema de Euler, un multigrafo conexo cuyos vértices tienen todos grado par admite un <b>circuito euleriano</b>. En términos de dominó: <b>las 28 fichas pueden colocarse en una sola cadena cerrada</b>, usando cada una exactamente una vez.</div>
+      }
+      @case (6) {
+        <p>Hierholzer construye el circuito desde el vértice 0. Pulsa reproducir para verlo ficha a ficha.</p>
+        @if (player.atEnd()) {
+          <div class="note ok">Circuito encontrado y <b>validado</b>: {{ hier.trail.edges.length }} fichas, sin repeticiones, empieza y termina en {{ hier.trail.vertices[0] }}.</div>
+          <div class="tiles">@for (c of chain; track c.id) { <app-domino-tile [a]="c.from" [b]="c.to" [size]="17" state="euler" /> }</div>
+          <p class="mono small seq">{{ hier.trail.vertices.join(' → ') }}</p>
+        }
+        <button class="btn" (click)="openInLab()">Abrir en el laboratorio de Euler</button>
+      }
+    }
+    <div class="row nav">
+      <button class="btn" (click)="go(step() - 1)" [disabled]="step() === 0">Anterior</button>
+      <span class="spacer"></span>
+      <button class="btn primary" (click)="go(step() + 1)" [disabled]="step() === titles.length - 1">Siguiente</button>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,72 @@
+<div class="page">
+  <section class="hero card">
+    <div class="hero-text">
+      <div class="row"><app-logo [size]="54" /><span class="eyebrow">Teoría de grafos · Dominó doble-seis</span></div>
+      <h1>DOMINOGRAPH</h1>
+      <p class="slogan">Donde cada ficha conecta un grafo.</p>
+      <p class="muted">Cada valor del dominó es un vértice y cada ficha es una arista. Juega contra la computadora, construye multigrafos y descubre por qué las 28 fichas pueden formar una sola cadena cerrada.</p>
+      <div class="row cta">
+        <a class="btn primary" routerLink="/jugar"><app-icon name="play" [size]="16" /> Jugar</a>
+        <a class="btn" routerLink="/laboratorio"><app-icon name="lab" [size]="16" /> Abrir laboratorio</a>
+        <a class="btn ghost" routerLink="/laboratorio/experimento"><app-icon name="bolt" [size]="16" /> Experimento de las 28 fichas</a>
+      </div>
+    </div>
+    <div class="hero-graph" aria-hidden="true">
+      <app-graph-view [graph]="full" [positions]="positions" [draggable]="false" [showEdgeLabels]="false" />
+      <div class="facts mono"><span>|V| = 7</span><span>|E| = 28</span><span>grado = 8</span><span>circuito euleriano ✓</span></div>
+    </div>
+  </section>
+
+  <div class="modules">
+    <a class="card module" routerLink="/jugar">
+      <app-icon name="play" [size]="22" /><h2>Juego</h2>
+      <p class="muted small">Partida contra una IA heurística (o Minimax α-β) con reglas configurables y análisis de la mesa como grafo.</p>
+    </a>
+    <a class="card module" routerLink="/laboratorio">
+      <app-icon name="lab" [size]="22" /><h2>Laboratorio</h2>
+      <p class="muted small">Constructor, matriz y lista de adyacencia, grados, BFS/DFS, caminos, Euler, backtracking y comparador.</p>
+    </a>
+    <a class="card module" routerLink="/desafios">
+      <app-icon name="trophy" [size]="22" /><h2>Desafíos</h2>
+      <p class="muted small">{{ levels().length }} niveles con validación automática y explicación matemática de cada respuesta.</p>
+    </a>
+  </div>
+
+  <div class="grid-3">
+    <section class="card">
+      <h3>Estadísticas</h3>
+      <div class="stats">
+        <div><b>{{ data().games.played }}</b><span>partidas</span></div>
+        <div><b>{{ winRate() }}%</b><span>victorias</span></div>
+        <div><b>{{ progress.challengePoints() }}</b><span>puntos en desafíos</span></div>
+        <div><b>{{ progress.algorithmsRun() }}</b><span>algoritmos ejecutados</span></div>
+      </div>
+      <p class="small muted" style="margin:10px 0 0">Ganadas {{ data().games.won }} · Perdidas {{ data().games.lost }} · Empates {{ data().games.drawn }}</p>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h3>Progreso de aprendizaje</h3>
+        @if (nextChallenge(); as n) { <a class="btn sm" [routerLink]="['/desafios', n.id]">Siguiente reto</a> }
+      </div>
+      <ul class="levels">
+        @for (l of levels(); track l.level) {
+          <li><span class="lname">{{ l.level }}. {{ l.name }}</span><div class="bar"><div [style.width.%]="l.pct"></div></div><span class="mono small">{{ l.solved }}/{{ l.total }}</span></li>
+        }
+      </ul>
+      <div class="concepts">
+        @for (c of concepts(); track c.name) { <span class="chip" [class.ok]="c.ok" [class.neutral]="!c.ok">{{ c.ok ? '✓' : '○' }} {{ c.name }}</span> }
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Última actividad</h3>
+      <ul class="activity">
+        @for (a of data().activity.slice(0, 6); track a.at) {
+          <li><app-icon [name]="a.kind === 'juego' ? 'play' : a.kind === 'desafio' ? 'trophy' : 'lab'" [size]="15" /><span>{{ a.text }}</span><time class="small muted">{{ ago(a.at) }}</time></li>
+        } @empty {
+          <li class="empty muted small">Aún no hay actividad. Empieza por una partida o por el experimento de las 28 fichas.</li>
+        }
+      </ul>
+    </section>
+  </div>
+</div>

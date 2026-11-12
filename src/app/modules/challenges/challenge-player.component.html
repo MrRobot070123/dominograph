@@ -1,0 +1,91 @@
+<div class="page">
+  <div class="top row">
+    <a routerLink="/desafios" class="btn sm ghost">← Todos los desafíos</a>
+    <span class="spacer"></span>
+    <span class="small muted">Desafío {{ index() + 1 }} de {{ total }}</span>
+    <div class="pbar" aria-hidden="true"><div [style.width.%]="((index() + 1) / total) * 100"></div></div>
+  </div>
+
+  <div class="layout">
+    <section class="card stack">
+      <div class="eyebrow">Nivel {{ level().level }} · {{ level().name }}</div>
+      <div class="row"><h1 style="margin:0">{{ challenge().title }}</h1><span class="spacer"></span>
+        <span class="chip">{{ challenge().points }} pts</span>
+        @if (best() !== null) { <span class="chip ok">Mejor: {{ best() }}</span> }
+      </div>
+      <p>{{ challenge().statement }}</p>
+      <div class="note"><b>Instrucción:</b> {{ challenge().instructions }}</div>
+      <div class="tiles" aria-label="Fichas de referencia">
+        @for (t of tiles(); track t.id) {
+          @if (challenge().kind === 'tile-seq') {
+            <button class="tile-pick" [disabled]="usedTiles().has(t.id) || solved()" (click)="pickTile(t)" [attr.aria-label]="'Usar ficha ' + t.id">
+              <app-domino-tile [a]="t.a" [b]="t.b" [size]="24" [state]="usedTiles().has(t.id) ? 'disabled' : 'playable'" />
+            </button>
+          } @else { <app-domino-tile [a]="t.a" [b]="t.b" [size]="tiles().length > 12 ? 15 : 22" /> }
+        }
+      </div>
+      <app-graph-view [graph]="graph()" [positions]="positions()" [vertexClass]="vertexClass()" [vertexBadge]="badges()" [draggable]="false"
+        (vertexClick)="onVertex($event)" ariaLabel="Grafo del desafío" />
+    </section>
+
+    <section class="card stack answer">
+      <div class="row">
+        <h2 style="margin:0">Tu respuesta</h2><span class="spacer"></span>
+        <label class="row small"><input type="checkbox" [checked]="timed()" (change)="toggleTimed()" /> Contrarreloj</label>
+        @if (timed()) { <span class="chip" [class.bad]="remaining() === 0" [class.warn]="remaining() > 0 && remaining() <= 10"><app-icon name="clock" [size]="14" /> {{ remaining() }} s</span> }
+      </div>
+
+      @switch (challenge().kind) {
+        @case ('number') {
+          <input type="number" class="big" [value]="numberValue() ?? ''" (input)="numberValue.set($any($event.target).value === '' ? null : +$any($event.target).value)" (keydown.enter)="submit()" [disabled]="solved()" aria-label="Respuesta numérica" />
+        }
+        @case ('choice') {
+          <div class="options" role="radiogroup">
+            @for (o of challenge().options ?? []; track o) {
+              <button class="btn opt" role="radio" [attr.aria-checked]="choiceValue() === o" [class.active]="choiceValue() === o" (click)="choiceValue.set(o)" [disabled]="solved()">{{ o }}</button>
+            }
+          </div>
+        }
+        @case ('vertex-set') {
+          <p class="small muted">Seleccionados: <span class="mono">{{ vertexSet().length ? vertexSet().join(', ') : 'ninguno' }}</span> (haz clic en el grafo)</p>
+          <button class="btn sm" (click)="vertexSet.set([])" [disabled]="solved()">Limpiar selección</button>
+        }
+        @case ('vertex-seq') {
+          <p class="small muted">Secuencia: <span class="mono">{{ vertexSeq().length ? vertexSeq().join(' → ') : '—' }}</span> (haz clic en el grafo)</p>
+          <div class="row"><button class="btn sm" (click)="vertexSeq.set(vertexSeq().slice(0, -1))" [disabled]="solved() || !vertexSeq().length">Deshacer</button>
+            <button class="btn sm" (click)="vertexSeq.set([])" [disabled]="solved()">Limpiar</button></div>
+        }
+        @case ('tile-seq') {
+          <div class="chain" aria-label="Tu cadena">
+            @for (t of orientedChain(); track t.id) { <app-domino-tile [a]="t.a" [b]="t.b" [size]="20" [state]="t.ok ? null : 'last'" /> } @empty { <span class="muted small">Haz clic en las fichas de arriba en orden.</span> }
+          </div>
+          @if (tileSeq().length > 1 && !orientedChain()[0].ok) { <p class="small warn-text" style="margin:0">Las fichas no encajan en este orden.</p> }
+          <div class="row"><button class="btn sm" (click)="tileSeq.set(tileSeq().slice(0, -1))" [disabled]="solved() || !tileSeq().length">Deshacer</button>
+            <button class="btn sm" (click)="tileSeq.set([])" [disabled]="solved()">Limpiar</button></div>
+        }
+      }
+
+      <button class="btn primary" (click)="submit()" [disabled]="solved() || !answer()">Comprobar</button>
+
+      @if (result(); as r) {
+        <div class="note" [class.ok]="r.correct" [class.bad]="!r.correct" role="status">
+          <b>{{ r.correct ? '¡Correcto!' : 'Todavía no.' }}</b> {{ r.feedback }}
+          @if (r.correct) { <div class="small">Obtienes <b>{{ earned() }}</b> puntos{{ attempts() > 1 ? ' (' + attempts() + ' intentos)' : '' }}{{ timed() && remaining() > 0 ? ', con bonificación por tiempo' : '' }}.</div> }
+        </div>
+      }
+      @if (!solved() && attempts() > 0 && !showExplanation()) { <button class="btn sm ghost" (click)="showExplanation.set(true)">Ver explicación</button> }
+      @if (showExplanation()) {
+        <div class="explain">
+          <h3>Explicación matemática</h3>
+          <ul>@for (l of explanation(); track $index) { <li>{{ l }}</li> }</ul>
+        </div>
+      }
+      <div class="row nav">
+        @if (prev(); as p) { <a class="btn sm" [routerLink]="['/desafios', p.id]">← Anterior</a> }
+        <span class="spacer"></span>
+        @if (solved() || attempts() > 0) { <button class="btn sm ghost" (click)="reset()">Reintentar</button> }
+        @if (next(); as n) { <a class="btn sm" [class.primary]="solved()" [routerLink]="['/desafios', n.id]">Siguiente →</a> }
+      </div>
+    </section>
+  </div>
+</div>

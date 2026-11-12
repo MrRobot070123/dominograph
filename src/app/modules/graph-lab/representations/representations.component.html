@@ -1,0 +1,93 @@
+<div class="tabs" role="tablist" aria-label="Representación">
+  <button class="btn sm" role="tab" [class.active]="view() === 'grafo'" [attr.aria-selected]="view() === 'grafo'" (click)="view.set('grafo')">Vista gráfica</button>
+  <button class="btn sm" role="tab" [class.active]="view() === 'matriz'" [attr.aria-selected]="view() === 'matriz'" (click)="view.set('matriz')">Matriz de adyacencia</button>
+  <button class="btn sm" role="tab" [class.active]="view() === 'lista'" [attr.aria-selected]="view() === 'lista'" (click)="view.set('lista')">Lista de adyacencia</button>
+</div>
+
+<div class="layout">
+  <section class="card">
+    @switch (view()) {
+      @case ('grafo') {
+        <h2>Vista gráfica</h2>
+        <p class="muted small">El mismo multigrafo que describen la matriz y la lista. Arrastra los vértices para reorganizarlo: las relaciones no cambian.</p>
+        <app-graph-view [graph]="lab.graph()" [positions]="lab.layout()" (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" />
+      }
+      @case ('matriz') {
+        <div class="card-title"><h2>Matriz de adyacencia A</h2></div>
+        <p class="muted small">A[i][j] = número de fichas entre i y j. En la diagonal, A[i][i] = número de bucles (dobles). Pasa el cursor o enfoca una celda.</p>
+        <div class="scroll-x">
+          <table class="table matrix" aria-label="Matriz de adyacencia">
+            <thead><tr><th scope="col">A</th>@for (l of matrix().labels; track l) { <th scope="col">{{ l }}</th> }<th scope="col">grado</th></tr></thead>
+            <tbody>
+              @for (row of matrix().matrix; track $index; let i = $index) {
+                <tr>
+                  <th scope="row" class="rowh">{{ matrix().labels[i] }}</th>
+                  @for (x of row; track $index; let j = $index) {
+                    <td tabindex="0" [class.z]="x === 0" [class.diag]="i === j" [class.diff]="isDiff(i, j)"
+                        [class.hot]="hot()?.i === i && hot()?.j === j"
+                        (mouseenter)="hot.set({ i, j })" (focus)="hot.set({ i, j })" (mouseleave)="hot.set(null)"
+                        [attr.aria-label]="'A[' + matrix().labels[i] + '][' + matrix().labels[j] + '] = ' + x">{{ x }}</td>
+                  }
+                  <td class="deg">{{ degrees()[i] }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:10px" aria-live="polite">
+          @if (explanation()) { {{ explanation() }} }
+          @else { grado(i) = Σ<sub>j</sub> A[i][j] + A[i][i]. El término A[i][i] suma otra vez cada bucle, porque un bucle aporta 2 al grado. }
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label for="cmp">Comparar con:</label>
+          <select id="cmp" [value]="compareId()" (change)="compareId.set($any($event.target).value)">
+            <option value="">— ninguna —</option>
+            @for (p of presets; track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+          </select>
+          @if (other()) { <span class="chip bad">Celdas distintas en rojo</span> }
+        </div>
+      }
+      @case ('lista') {
+        <h2>Lista de adyacencia</h2>
+        <p class="muted small">Cada conexión conserva el identificador de su ficha: las aristas paralelas aparecen por separado y los bucles como conexión del vértice consigo mismo.</p>
+        <ul class="list">
+          @for (r of list(); track r.vertex) {
+            <li>
+              <span class="v">Vértice {{ r.vertex }}:</span>
+              <span>
+                @for (e of r.entries; track e.edgeId) {
+                  <span class="entry" [class.loop]="e.isLoop" [class.hot]="hotEdge() === e.edgeId" tabindex="0"
+                        (mouseenter)="hotEdge.set(e.edgeId)" (focus)="hotEdge.set(e.edgeId)" (mouseleave)="hotEdge.set(null)">
+                    {{ e.neighbor }}<small>({{ e.edgeId }}{{ e.isLoop ? ', bucle' : '' }})</small>
+                  </span>
+                } @empty { <span class="muted">sin conexiones (aislado)</span> }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </section>
+
+  <section class="card">
+    @if (view() === 'matriz' && other(); as o) {
+      <h2>{{ o.name }}</h2>
+      <div class="scroll-x">
+        <table class="table matrix" aria-label="Matriz de comparación">
+          <thead><tr><th>A</th>@for (l of o.m.labels; track l) { <th>{{ l }}</th> }</tr></thead>
+          <tbody>
+            @for (row of o.m.matrix; track $index; let i = $index) {
+              <tr><th class="rowh">{{ o.m.labels[i] }}</th>
+                @for (x of row; track $index; let j = $index) { <td [class.z]="x === 0" [class.diag]="i === j" [class.diff]="isOtherDiff(i, j)">{{ x }}</td> }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <h2>Grafo resaltado</h2>
+      <p class="muted small">Las fichas correspondientes a la celda o conexión seleccionada se resaltan en amarillo.</p>
+      <app-graph-view [graph]="lab.graph()" [positions]="lab.layout()" [edgeClass]="edgeClass()" [draggable]="false" />
+    }
+  </section>
+</div>

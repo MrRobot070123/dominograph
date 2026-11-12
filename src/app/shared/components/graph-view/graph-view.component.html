@@ -1,0 +1,36 @@
+<svg #svg class="graph" [attr.viewBox]="'0 0 ' + W + ' ' + H" role="group" [attr.aria-label]="ariaLabel()"
+     (pointermove)="onMove($event)" (pointerup)="onUp()" (pointercancel)="onUp()">
+  <defs>
+    <pattern id="gv-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#22405f" />
+    </pattern>
+  </defs>
+  <rect [attr.width]="W" [attr.height]="H" fill="url(#gv-grid)" />
+
+  @for (s of shapes(); track s.id) {
+    <g [attr.class]="edgeCls(s)" (click)="edgeClick.emit(s.id)" (keydown)="onKey($event, 'e', s.id)"
+       tabindex="0" role="button" [attr.aria-label]="(s.loop ? 'Bucle ' : 'Arista ') + s.label">
+      <path class="hit" [attr.d]="s.d" />
+      <path class="line" [attr.d]="s.d" />
+      @if (labelsOn()) {
+        <text class="elabel" [attr.x]="s.lx" [attr.y]="s.ly + 4">{{ s.label }}</text>
+      }
+    </g>
+  }
+
+  @for (n of vertices(); track n.v) {
+    <g [attr.class]="vertexCls(n.v)" [attr.transform]="'translate(' + n.x + ',' + n.y + ')'"
+       (pointerdown)="onVertexDown($event, n.v)" (keydown)="onKey($event, 'v', n.v)"
+       tabindex="0" role="button" [attr.aria-label]="'Vértice ' + n.v + ', grado ' + n.degree">
+      <circle class="halo" r="27" />
+      <circle class="body" r="20" />
+      <text class="vlabel" y="6">{{ n.v }}</text>
+      @if (vertexBadge()[n.v]; as badge) {
+        <g class="badge" transform="translate(17,-21)">
+          <rect x="-4" y="-11" [attr.width]="badge.length * 7 + 9" height="17" rx="8.5" />
+          <text x="0.5" y="2">{{ badge }}</text>
+        </g>
+      }
+    </g>
+  }
+</svg>

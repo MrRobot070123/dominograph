@@ -1,0 +1,108 @@
+<div class="layout">
+  <section class="card canvas" aria-labelledby="viz-title">
+    <div class="card-title">
+      <h2 id="viz-title">Visualizador</h2>
+      <div class="row">
+        <button class="btn sm" [class.active]="connectMode()" (click)="toggleConnect()" [attr.aria-pressed]="connectMode()">
+          <app-icon name="plus" [size]="15" /> {{ connectMode() ? 'Conectando…' : 'Conectar vértices' }}
+        </button>
+        <button class="btn sm ghost" (click)="lab.relayout('circle')">Circular</button>
+        <button class="btn sm ghost" (click)="lab.relayout('grid')">Rejilla</button>
+      </div>
+    </div>
+    <app-graph-view [graph]="g()" [positions]="lab.layout()" [vertexClass]="vertexClass()" [vertexBadge]="badges()"
+      [selectedVertex]="lab.selectedVertex()" [selectedEdge]="lab.selectedEdge()"
+      (vertexClick)="onVertexClick($event)" (edgeClick)="onEdgeClick($event)"
+      (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" ariaLabel="Grafo en construcción" />
+    <div class="legend">
+      <span><i style="background:#16304e;border:2px solid var(--electric)"></i>Vértice (valor)</span>
+      <span><i style="border:2px dashed var(--odd)"></i>Grado impar</span>
+      <span><i style="background:#8fa9c9"></i>Arista / bucle (ficha)</span>
+      <span><i style="background:var(--violet)"></i>Aristas paralelas</span>
+      <span><i style="background:#121e2e;border:2px solid #3a5270"></i>Aislado</span>
+    </div>
+    @if (message(); as m) {
+      <div class="note" [class.ok]="m.kind === 'ok'" [class.bad]="m.kind === 'bad'" role="status">{{ m.text }}</div>
+    }
+
+    @if (selectedVertexInfo(); as s) {
+      <div class="selection">
+        <div><b>Vértice {{ s.v }}</b> · grado {{ s.degree }} · vecinos: <span class="mono">{{ s.neighbors.join(', ') || '—' }}</span></div>
+        <div class="small muted">Aristas incidentes: <span class="mono">{{ s.incident.join(', ') || 'ninguna' }}</span></div>
+        <button class="btn sm danger" (click)="requestDeleteVertex()"><app-icon name="trash" [size]="15" /> Eliminar vértice</button>
+      </div>
+    }
+    @if (confirmDelete() !== null) {
+      <div class="note warn" role="alertdialog" aria-label="Confirmar eliminación">
+        El vértice {{ confirmDelete() }} tiene {{ g().incidentEdges(confirmDelete()!).length }} arista(s) incidente(s). Si lo eliminas, esas aristas también se eliminan, porque una arista no puede existir sin sus extremos.
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm danger" (click)="deleteVertex(confirmDelete()!)">Eliminar vértice y aristas</button>
+          <button class="btn sm" (click)="confirmDelete.set(null)">Cancelar</button>
+        </div>
+      </div>
+    }
+    @if (selectedEdgeInfo(); as e) {
+      <div class="selection">
+        <div><b>{{ e.u === e.v ? 'Bucle' : 'Arista' }} {{ e.id }}</b> · une {{ e.u }} y {{ e.v }}{{ e.u === e.v ? ' (aporta 2 al grado de ' + e.u + ')' : '' }}</div>
+        <button class="btn sm danger" (click)="deleteEdge()"><app-icon name="trash" [size]="15" /> Eliminar arista</button>
+      </div>
+    }
+  </section>
+
+  <div class="side">
+    <section class="card">
+      <h3>Propiedades del grafo</h3>
+      <app-graph-properties [graph]="g()" />
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h3>Fichas del dominó</h3>
+        <label class="row small"><input type="checkbox" [checked]="allowRepeats()" (change)="allowRepeats.set(!allowRepeats())" /> Permitir repetidas</label>
+      </div>
+      <p class="small muted">Haz clic en una ficha para agregarla o quitarla. Con "Permitir repetidas" cada clic agrega una copia (arista paralela).</p>
+      <div class="palette">
+        @for (t of tiles; track t.id) {
+          <button class="tile-btn" [class.on]="tileCount().get(t.id)" (click)="toggleTile(t)" [attr.aria-pressed]="!!tileCount().get(t.id)" [attr.aria-label]="'Ficha ' + t.id">
+            <app-domino-tile [a]="t.a" [b]="t.b" [size]="17" />
+            @if ((tileCount().get(t.id) ?? 0) > 1) { <span class="count">×{{ tileCount().get(t.id) }}</span> }
+          </button>
+        }
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input class="grow" placeholder="Ej.: 1-3, 1-3, 2-2" [value]="tileText()" (input)="tileText.set($any($event.target).value)" (keydown.enter)="addFromText()" aria-label="Fichas a agregar" />
+        <button class="btn sm primary" (click)="addFromText()">Agregar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Configuración</h3>
+      <div class="row">
+        <select #preset aria-label="Configuraciones de ejemplo">
+          @for (p of presets; track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+        </select>
+        <button class="btn sm" (click)="loadPreset(preset.value)">Cargar</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="number" min="0" max="30" placeholder="Nuevo vértice" [value]="newVertex() ?? ''" (input)="newVertex.set($any($event.target).value === '' ? null : +$any($event.target).value)" aria-label="Número del nuevo vértice" style="width:140px" />
+        <button class="btn sm" (click)="addVertex()"><app-icon name="plus" [size]="15" /> Vértice</button>
+        <button class="btn sm danger" (click)="clearEdges()">Limpiar aristas</button>
+        <button class="btn sm ghost" (click)="loadPreset('full')"><app-icon name="reset" [size]="15" /> Reiniciar</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <input class="grow" placeholder="Nombre de la configuración" [value]="saveName()" (input)="saveName.set($any($event.target).value)" aria-label="Nombre para guardar" />
+        <button class="btn sm primary" (click)="save()"><app-icon name="save" [size]="15" /> Guardar</button>
+      </div>
+      @if (lab.saved().length) {
+        <ul class="saved">
+          @for (s of lab.saved(); track s.at) {
+            <li>
+              <button class="link" (click)="load(s)">{{ s.name }}</button>
+              <span class="muted small">{{ s.data.edges.length }} fichas</span>
+              <button class="btn sm ghost" (click)="lab.deleteConfig(s)" [attr.aria-label]="'Borrar ' + s.name"><app-icon name="trash" [size]="14" /></button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</div>

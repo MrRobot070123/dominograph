@@ -1,0 +1,73 @@
+<div class="layout">
+  <div class="stack" style="gap:16px">
+    <section class="card">
+      <h2>Tabla de grados</h2>
+      <table class="table">
+        <thead><tr><th>Vértice</th><th class="num">Aristas a otros</th><th class="num">Bucles</th><th class="num">Grado</th><th>Paridad</th></tr></thead>
+        <tbody>
+          @for (r of table(); track r.vertex) {
+            <tr [class.max]="r.isMax" [class.hl]="r.isMax">
+              <td>{{ r.vertex }}{{ r.isMax ? ' ★' : '' }}</td>
+              <td class="num">{{ r.simpleEdges }}</td>
+              <td class="num">{{ r.loops }} <span class="muted">(×2)</span></td>
+              <td class="num"><b>{{ r.degree }}</b></td>
+              <td [class.odd-t]="r.parity === 'impar'">{{ r.parity }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p class="small muted" style="margin-top:8px">★ vértice(s) de mayor grado. grado(v) = aristas a otros vértices + 2 × bucles.</p>
+    </section>
+
+    <section class="card">
+      <h2>Teorema del apretón de manos</h2>
+      <div class="formula">Σ grado(v) = 2·|E|</div>
+      <p style="margin-top:10px">
+        Suma de grados = <b class="mono">{{ hs().degreeSum }}</b> &nbsp;·&nbsp; 2·|E| = 2·{{ hs().edgeCount }} = <b class="mono">{{ 2 * hs().edgeCount }}</b>
+        &nbsp;<span class="chip" [class.ok]="hs().holds" [class.bad]="!hs().holds">{{ hs().holds ? 'Se cumple' : 'No se cumple' }}</span>
+      </p>
+      <p class="small muted">Cada ficha tiene dos extremos y suma exactamente 2 a la suma total de grados: 1 a cada vértice si son distintos, o 2 al mismo vértice si es un doble (bucle). Este grafo tiene {{ loopsTotal() }} bucle(s), que aportan {{ 2 * loopsTotal() }} a la suma. Consecuencia: el número de vértices de grado impar siempre es par.</p>
+    </section>
+
+    <section class="card">
+      <h2>Distribución de grados</h2>
+      <div class="bars" aria-hidden="true">
+        @for (r of table(); track r.vertex) {
+          <div class="bar" [class.odd]="r.parity === 'impar'" [class.max]="r.isMax">
+            <span>{{ r.degree }}</span>
+            <div [style.height.%]="(r.degree / maxDeg()) * 85"></div>
+          </div>
+        }
+      </div>
+      <div class="xs">@for (r of table(); track r.vertex) { <span>{{ r.vertex }}</span> }</div>
+    </section>
+  </div>
+
+  <div class="stack" style="gap:16px">
+    <section class="card">
+      <h2>Grafo con grados</h2>
+      <app-graph-view [graph]="lab.graph()" [positions]="lab.layout()" [vertexClass]="vertexClass()" [vertexBadge]="badges()" (vertexMove)="lab.moveVertex($event.vertex, $event.x, $event.y)" />
+    </section>
+    <section class="card">
+      <h2>¿Qué pasa si agrego o quito una ficha?</h2>
+      <p class="small muted">Elige una ficha: si ya está en el grafo se simula quitarla; si no, agregarla.</p>
+      <div class="sim">
+        @for (t of tiles; track t.id) {
+          <button [class.on]="has().has(t.id)" [class.pick]="picked()?.id === t.id" (click)="pick(t)" [attr.aria-label]="'Simular ficha ' + t.id"><app-domino-tile [a]="t.a" [b]="t.b" [size]="16" /></button>
+        }
+      </div>
+      @if (simulation(); as s) {
+        <div class="note" style="margin-top:12px" aria-live="polite">
+          <b>{{ s.removing ? 'Quitar' : 'Agregar' }} la ficha {{ s.tile.id }}</b>
+          <ul>
+            @for (r of s.rows; track r.v) { <li>grado({{ r.v }}): {{ r.before }} → {{ r.after }} <span class="delta">({{ r.after - r.before > 0 ? '+' : '' }}{{ r.after - r.before }})</span></li> }
+            <li>Σ grados: {{ s.sumBefore }} → {{ s.sumAfter }}</li>
+          </ul>
+          @if (s.isDouble) { <p class="small" style="margin:6px 0 0">Es un doble: un solo vértice cambia en 2, porque el bucle toca dos veces el mismo vértice. La paridad de ese vértice no cambia.</p> }
+          @else { <p class="small" style="margin:6px 0 0">Dos vértices cambian en 1: ambos invierten su paridad (par ↔ impar).</p> }
+          <button class="btn sm primary" style="margin-top:8px" (click)="apply()">Aplicar al grafo</button>
+        </div>
+      }
+    </section>
+  </div>
+</div>

@@ -1,0 +1,45 @@
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="mobile-bar">
+  <button class="btn ghost sm" (click)="open.set(!open())" [attr.aria-expanded]="open()" aria-controls="sidebar" aria-label="Menú">
+    <app-icon [name]="open() ? 'close' : 'menu'" />
+  </button>
+  <app-logo [size]="34" />
+  <strong class="brand-name">DOMINOGRAPH</strong>
+</header>
+
+<aside id="sidebar" class="sidebar" [class.open]="open()">
+  <div class="brand">
+    <app-logo [size]="46" />
+    <div>
+      <div class="brand-name">DOMINOGRAPH</div>
+      <div class="tagline">Donde cada ficha conecta un grafo</div>
+    </div>
+  </div>
+  <nav aria-label="Navegación principal">
+    @for (item of nav; track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: item.exact }" (click)="open.set(false)">
+        <app-icon [name]="item.icon" [size]="19" />
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+  <div class="side-foot">
+    <div class="model">
+      <span class="mono">G = (V, E)</span>
+      <span>V = valores 0–6 · E = fichas</span>
+    </div>
+    <div class="authors">Franco Miranda · Daniel Pacheco<br />Ingeniería de Sistemas</div>
+  </div>
+</aside>
+@if (open()) { <div class="scrim" (click)="open.set(false)" aria-hidden="true"></div> }
+
+<main id="contenido" class="content" tabindex="-1">
+  @if (error()) {
+    <div class="error-toast" role="alert">
+      <span>{{ error() }}</span>
+      <button class="btn sm ghost" (click)="error.set(null)" aria-label="Cerrar">✕</button>
+    </div>
+  }
+  <router-outlet />
+</main>

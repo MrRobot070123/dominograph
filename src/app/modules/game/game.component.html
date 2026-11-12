@@ -1,0 +1,191 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Modo de juego</div>
+      <h1>Dominó doble-seis contra la computadora</h1>
+      <p>{{ ruleName(game.settings().startRule) }} · {{ ruleName(game.settings().drawRule) }} · IA {{ ruleName(game.settings().aiLevel) }}</p>
+    </div>
+    <div class="row">
+      <button class="btn" (click)="draft.set(game.settings()); showSettings.set(!showSettings())" [attr.aria-expanded]="showSettings()">Reglas</button>
+      <button class="btn primary" (click)="game.newGame()"><app-icon name="reset" [size]="16" /> Nueva partida</button>
+    </div>
+  </div>
+
+  @if (showSettings()) {
+    <section class="card settings" aria-label="Configuración de reglas">
+      <div class="field"><label for="r-start">Regla de salida</label>
+        <select id="r-start" [value]="draft().startRule" (change)="patch('startRule', $any($event.target).value)">
+          <option value="highest-double">Sale quien tenga el doble más alto</option>
+          <option value="human-first">Siempre sale el jugador</option>
+          <option value="cpu-first">Siempre sale la computadora</option>
+        </select></div>
+      <div class="field"><label for="r-draw">Pozo</label>
+        <select id="r-draw" [value]="draft().drawRule" (change)="patch('drawRule', $any($event.target).value)">
+          <option value="draw-until-playable">Robar hasta poder jugar</option>
+          <option value="draw-one">Robar solo una ficha por turno</option>
+          <option value="no-draw">Sin pozo: si no puedes jugar, pasas</option>
+        </select></div>
+      <div class="field"><label for="r-ai">Nivel de la IA</label>
+        <select id="r-ai" [value]="draft().aiLevel" (change)="patch('aiLevel', $any($event.target).value)">
+          <option value="basico">Básico (solo puntos)</option>
+          <option value="estrategico">Estratégico (heurísticas)</option>
+          <option value="experto">Experto (Minimax con poda α-β)</option>
+        </select></div>
+      <div class="row" style="align-self:end"><button class="btn primary" (click)="applySettings()">Aplicar y empezar</button><button class="btn ghost" (click)="showSettings.set(false)">Cerrar</button></div>
+      <p class="small muted full">Fin de la partida: gana quien se quede sin fichas y suma los puntos del rival. Si nadie puede jugar (dos pases seguidos), la partida se cierra y gana quien tenga menos puntos en mano; con los mismos puntos es empate.</p>
+    </section>
+  }
+
+  <div class="layout">
+    <div class="main">
+      <!-- Computadora -->
+      <section class="card player cpu" aria-label="Mano de la computadora">
+        <div class="who"><app-icon name="bot" [size]="20" /><b>Computadora</b><span class="chip neutral">{{ cpuCount() }} fichas</span>
+          @if (game.cpuThinking()) { <span class="chip thinking">pensando…</span> }
+          @if (s().current === 'cpu' && s().status === 'playing') { <span class="turn">Turno</span> }
+        </div>
+        <div class="hand backs">
+          @for (t of s().hands.cpu; track t.id) { <app-domino-tile [a]="0" [b]="0" [vertical]="true" [faceDown]="s().status === 'playing'" [size]="22" /> }
+        </div>
+        @if (game.lastDecision(); as d) {
+          <div class="ai small">
+            <span>{{ d.summary }}</span>
+            <button class="btn sm ghost" (click)="showAiDetail.set(!showAiDetail())" [attr.aria-expanded]="showAiDetail()">{{ showAiDetail() ? 'Ocultar' : 'Ver' }} análisis</button>
+          </div>
+          @if (showAiDetail()) {
+            <table class="table small">
+              <thead><tr><th>Jugada</th><th class="num">Puntuación</th><th>Criterios</th></tr></thead>
+              <tbody>
+                @for (e of d.evaluations; track $index; let first = $first) {
+                  <tr [class.hl]="first"><td class="mono">{{ e.move.tileId }} {{ e.move.side === 'left' ? '←' : '→' }}</td><td class="num">{{ e.score }}</td>
+                    <td>@for (b of e.breakdown; track b.label) { <span class="crit">{{ b.label }} {{ b.value > 0 ? '+' : '' }}{{ b.value }}</span> }</td></tr>
+                }
+              </tbody>
+            </table>
+          }
+        }
+      </section>
+
+      <!-- Tablero -->
+      <section class="card table-area" aria-label="Mesa">
+        <div class="board-head">
+          <span class="chip">Pozo: {{ s().boneyard.length }}</span>
+          @if (game.ends(); as e) {
+            <span class="chip">Extremos: <b class="mono">{{ e.left }}</b> … <b class="mono">{{ e.right }}</b></span>
+          }
+          <span class="chip neutral">Fichas en mesa: {{ s().chain.length }}</span>
+        </div>
+        <div class="board-wrap">
+          @if (game.selectedSides().includes('left') && s().chain.length) {
+            <button class="drop left" (click)="game.playHuman('left')" aria-label="Colocar a la izquierda">◀ {{ game.ends()?.left }}</button>
+          }
+          <div class="board" #board tabindex="0" aria-label="Cadena de fichas, desplázate horizontalmente">
+            @for (p of s().chain; track p.tile.id; let i = $index) {
+              <app-domino-tile [a]="p.left" [b]="p.right" [vertical]="isDoubleAt(i)" [size]="34"
+                [state]="game.lastPlayedId() === p.tile.id ? 'last' : null" [class.cpu-tile]="p.by === 'cpu'" />
+            } @empty {
+              <div class="empty">
+                @if (game.selectedSides().length) { <button class="btn primary" (click)="game.playHuman('right')">Colocar la salida</button> }
+                @else { La mesa está vacía. {{ s().current === 'human' ? 'Elige tu ficha de salida.' : 'La computadora va a salir.' }} }
+              </div>
+            }
+          </div>
+          @if (game.selectedSides().includes('right') && s().chain.length) {
+            <button class="drop right" (click)="game.playHuman('right')" aria-label="Colocar a la derecha">{{ game.ends()?.right }} ▶</button>
+          }
+        </div>
+        @if (s().openingTileId && s().current === 'human') { <div class="note small">Debes salir con {{ s().openingTileId }} (regla del doble más alto).</div> }
+      </section>
+
+      <!-- Jugador -->
+      <section class="card player human" aria-label="Tu mano">
+        <div class="who"><app-icon name="user" [size]="20" /><b>Tu mano</b><span class="chip neutral">{{ s().hands.human.length }} fichas · {{ humanPoints() }} pts</span>
+          @if (game.humanTurn()) { <span class="turn">Tu turno</span> }
+        </div>
+        <div class="hand" role="listbox" aria-label="Fichas de tu mano">
+          @for (t of s().hands.human; track t.id) {
+            <button class="hand-tile" role="option" [attr.aria-selected]="game.selectedTile() === t.id" (click)="onHandClick(t.id)"
+                    [attr.aria-label]="'Ficha ' + t.id + (game.playableIds().has(t.id) ? ', jugable' : ', no jugable')">
+              <app-domino-tile [a]="t.a" [b]="t.b" [vertical]="true" [size]="36" [state]="tileState(t.id)" />
+            </button>
+          }
+        </div>
+        <div class="actions row">
+          @if (game.selectedTile(); as sel) {
+            <span class="small">Ficha <b class="mono">{{ sel }}</b> →</span>
+            @if (s().chain.length === 0) { <button class="btn sm primary" (click)="game.playHuman('right')">Colocar</button> }
+            @else {
+              @for (side of game.selectedSides(); track side) {
+                <button class="btn sm primary" (click)="game.playHuman(side)">{{ side === 'left' ? 'Izquierda (' + game.ends()?.left + ')' : 'Derecha (' + game.ends()?.right + ')' }}</button>
+              }
+            }
+            <button class="btn sm" (click)="game.cancelSelection()">Cancelar</button>
+          } @else if (game.humanTurn()) {
+            @if (game.humanMoves().length) { <span class="small muted">Selecciona una ficha resaltada ({{ game.playableIds().size }} jugable{{ game.playableIds().size === 1 ? '' : 's' }}).</span> }
+            @else { <span class="small warn-text">No tienes fichas que encajen con {{ game.ends()?.left }} ni {{ game.ends()?.right }}.</span> }
+          }
+          <span class="spacer"></span>
+          <button class="btn sm ghost" (click)="game.showHint()" [disabled]="!game.humanTurn() || !game.humanMoves().length"><app-icon name="bolt" [size]="15" /> Sugerencia</button>
+          <button class="btn sm" (click)="game.drawHuman()" [disabled]="!game.canDraw()">Robar del pozo</button>
+          <button class="btn sm" (click)="game.passHuman()" [disabled]="!game.canPass()">Pasar</button>
+        </div>
+        @if (notPlayable(); as np) { <div class="note bad small" role="status">La ficha {{ np }} no encaja con ningún extremo.</div> }
+        @if (game.hint(); as h) { <div class="note small" role="status">Sugerencia: {{ h.summary }}</div> }
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="card">
+        <div class="card-title"><h3>Análisis con grafos</h3></div>
+        <div class="tabs" role="tablist">
+          <button class="btn sm" role="tab" [class.active]="analysisTab() === 'mesa'" (click)="analysisTab.set('mesa')">Fichas en mesa</button>
+          <button class="btn sm" role="tab" [class.active]="analysisTab() === 'restantes'" (click)="analysisTab.set('restantes')">Fichas sin jugar</button>
+        </div>
+        <app-graph-view [graph]="shownGraph()" [positions]="positions" [edgeClass]="graphEdgeClass()" [vertexClass]="graphVertexClass()" [draggable]="false" ariaLabel="Grafo de la partida" />
+        <div class="degs">@for (d of shownDegrees(); track d.v) { <span [class.odd]="d.d % 2 === 1"><b>{{ d.v }}</b>{{ d.d }}</span> }</div>
+        @if (analysisTab() === 'mesa') {
+          <p class="small">La cadena de la mesa es un <b>camino sin aristas repetidas</b> en este multigrafo: cada ficha colocada se usa una sola vez. Extremos: <span class="chip ok">{{ game.ends()?.left ?? '—' }}</span> (verde) y <span class="chip warn">{{ game.ends()?.right ?? '—' }}</span> (amarillo).</p>
+          <p class="small muted">Por eso, en este grafo solo los extremos pueden tener grado impar (si son distintos). Que la cadena sea válida no implica que todas las fichas del juego formen un recorrido euleriano.</p>
+        } @else {
+          <p class="small">{{ restGraph().size }} fichas sin jugar (manos + pozo).
+            @switch (shownEuler().kind) {
+              @case ('circuit') { Podrían formar un circuito euleriano. }
+              @case ('path') { Podrían formar una sola cadena abierta de {{ shownEuler().start }} a {{ shownEuler().end }}. }
+              @case ('none') { No pueden formar una sola cadena: {{ shownEuler().oddVertices.length }} vértices impares o aristas desconectadas. }
+              @default { No quedan fichas. }
+            }
+          </p>
+        }
+        <button class="btn sm" (click)="analyzeInLab(analysisTab())"><app-icon name="lab" [size]="15" /> Abrir en el laboratorio</button>
+      </section>
+
+      <section class="card">
+        <h3>Historial de jugadas <span class="small muted">(recientes primero)</span></h3>
+        <ul class="log" aria-label="Jugadas más recientes primero">@for (e of lastEvents(); track $index) { <li [class]="e.player"><span class="t mono">T{{ e.turn }}</span>{{ e.message }}</li> }</ul>
+      </section>
+    </aside>
+  </div>
+
+  @if (s().status === 'finished' && s().result; as r) {
+    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="end-title">
+      <div class="card modal">
+        <div class="eyebrow">{{ r.reason === 'domino' ? 'Dominó' : 'Partida cerrada' }}</div>
+        <h2 id="end-title" [class.win]="r.winner === 'human'" [class.lose]="r.winner === 'cpu'">{{ r.winner === 'human' ? '¡Ganaste!' : r.winner === 'cpu' ? 'Ganó la computadora' : 'Empate' }}</h2>
+        <p>{{ r.message }}</p>
+        <table class="table small">
+          <thead><tr><th></th><th class="num">Fichas en mano</th><th class="num">Puntos en mano</th></tr></thead>
+          <tbody>
+            <tr><td>Tú</td><td class="num">{{ s().hands.human.length }}</td><td class="num">{{ r.remaining.human }}</td></tr>
+            <tr><td>Computadora</td><td class="num">{{ s().hands.cpu.length }}</td><td class="num">{{ r.remaining.cpu }}</td></tr>
+          </tbody>
+        </table>
+        <div class="reveal">@for (t of s().hands.cpu; track t.id) { <app-domino-tile [a]="t.a" [b]="t.b" [size]="18" /> }</div>
+        <p class="small muted">Se jugaron {{ s().chain.length }} fichas en {{ s().turn - 1 }} turnos. La cadena final es un camino de {{ s().chain.length }} aristas en el multigrafo del dominó.</p>
+        <div class="row">
+          <button class="btn primary" (click)="game.newGame()">Nueva partida</button>
+          <button class="btn" (click)="analyzeInLab('mesa')"><app-icon name="lab" [size]="15" /> Analizar la cadena en el laboratorio</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
